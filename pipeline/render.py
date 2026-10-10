@@ -190,11 +190,15 @@ env.filters["label_display"] = label_display
 tmpl = env.get_template("index_hcc.html.j2")
 html = tmpl.render(**context)
 
-# 自动期号: 按输出目录已有期数递增
+# 自动期号: 同窗口覆盖已有期, 新窗口才递增期号 (幂等, 重复触发不产生重复期)
 os.makedirs(OUTDIR, exist_ok=True)
 existing = glob.glob(os.path.join(OUTDIR, "肝癌研究周报_*_第*期.html"))
-issue_no = len(existing) + 1
-out = os.path.join(OUTDIR, f"肝癌研究周报_{D0}-{D1}_第{issue_no}期.html")
+same_window = [f for f in existing if f"{D0}-{D1}" in os.path.basename(f)]
+if same_window:
+    out = same_window[0]   # 覆盖同窗口旧版
+else:
+    issue_no = len(existing) + 1
+    out = os.path.join(OUTDIR, f"肝癌研究周报_{D0}-{D1}_第{issue_no}期.html")
 open(out, "w", encoding="utf-8").write(html)
 
 # ---- 历史总目录页 ----
@@ -223,6 +227,8 @@ for it in issues:
                       f"<span class='no'>第 {it['no']} 期</span></div>")
 index_html.append("</body></html>")
 open(os.path.join(OUTDIR, "肝癌研究周报_总目录.html"), "w", encoding="utf-8").write("\n".join(index_html))
+# 同步输出 index.html 作为 Pages 根路径入口
+open(os.path.join(OUTDIR, "index.html"), "w", encoding="utf-8").write("\n".join(index_html))
 print(f"总目录已更新: 肝癌研究周报_总目录.html ({len(issues)} 期)")
 print(f"渲染完成: {out} ({len(html)//1024} KB)")
 print(f"统计: {stats}")
